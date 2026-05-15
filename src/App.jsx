@@ -62,7 +62,7 @@ function App() {
       {/* Navbar */}
       <nav className="fixed w-full z-50 bg-white/90 backdrop-blur-md border-b border-slate-200 py-4 px-6 md:px-12 flex justify-between items-center shadow-sm">
         <div className="flex items-center">
-          <img src={logoVero} alt="Allianz OptiMaxx Plus" className="h-10 md:h-12 object-contain" />
+          <img src={logoVero} alt="Allianz OptiMaxx Plus" className="h-16 md:h-20 object-contain" />
         </div>
         <div className="hidden md:flex gap-8 text-sm font-semibold text-slate-600">
           <a href="#estrategia" className="hover:text-allianz transition-colors">Estrategia Fiscal</a>
@@ -403,7 +403,7 @@ function App() {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div>
             <div className="flex items-center gap-4 mb-2">
-              <img src={logoVero} alt="Allianz" className="h-8 grayscale opacity-70" />
+              <img src={logoVero} alt="Allianz" className="h-12 grayscale opacity-70" />
             </div>
             <p className="text-xs text-slate-500 mt-4">Auditoría Patrimonial & Estrategia Fiscal Institucional.</p>
           </div>

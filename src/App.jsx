@@ -26,6 +26,7 @@ function App() {
   
   const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
   const [registered, setRegistered] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const calcularInteresCompuesto = (e) => {
     e.preventDefault();
@@ -47,9 +48,30 @@ function App() {
     }
   };
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
-    setRegistered(true);
+    setIsSubmitting(true);
+    
+    const url = "https://script.google.com/macros/s/AKfycbwcdkX3mrHMFZKWQ_wzzxCDoDpV232p5P4g0LjaU_KUjIjkD9rrJOJxl1_glZHPyGOTkg/exec";
+    
+    const formParams = new URLSearchParams();
+    formParams.append("name", formData.name);
+    formParams.append("email", formData.email);
+    formParams.append("phone", formData.phone);
+
+    try {
+      await fetch(url, {
+        method: "POST",
+        mode: "no-cors",
+        body: formParams,
+      });
+      setRegistered(true);
+    } catch (error) {
+      console.error("Error al registrar", error);
+      alert("Ocurrió un error. Por favor intenta nuevamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const formatCurrency = (val) => {
@@ -365,9 +387,20 @@ function App() {
                   <div className="pt-4">
                     <button 
                       type="submit" 
-                      className="w-full bg-allianz text-white font-bold py-4 rounded-md hover:bg-blue-800 transition-all text-lg shadow-lg"
+                      disabled={isSubmitting}
+                      className="w-full bg-allianz text-white font-bold py-4 rounded-md hover:bg-blue-800 transition-all text-lg shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center"
                     >
-                      Confirmar mi Registro
+                      {isSubmitting ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Procesando...
+                        </>
+                      ) : (
+                        "Confirmar mi Registro"
+                      )}
                     </button>
                     
                     <div className="mt-4 text-center">

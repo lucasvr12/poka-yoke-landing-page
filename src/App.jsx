@@ -48,8 +48,8 @@ function App() {
     const t = parseInt(anos);
     
     if (P > 0 && t > 0) {
-      // 14.9% histórico (S&P 500 / Nasdaq)
-      const r_allianz = 0.149;
+      // 10% proyectado
+      const r_allianz = 0.10;
       // Banco tradicional ~ 4%
       const r_banco = 0.04;
       const n = 12; // Mensual
@@ -131,7 +131,7 @@ function App() {
           </motion.div>
           
           <motion.h1 variants={fadeIn} className="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight mb-6 text-slate-900">
-            Hace que tu dinero trabaje doblemente duro: <br />
+            Haz que tu dinero trabaje doblemente duro: <br />
             <span className="text-allianz">Aprovecha el interés compuesto en Fondos Indexados y recupera hasta el 35% de tus impuestos ante el SAT.</span>
           </motion.h1>
           
@@ -237,7 +237,7 @@ function App() {
           <div className="text-center mb-12">
             <Calculator className="mx-auto text-allianz mb-4" size={48} />
             <h2 className="text-3xl md:text-4xl font-extrabold mb-4 text-slate-900">Simulador de Interés Compuesto</h2>
-            <p className="text-slate-600 text-md md:text-lg">Proyección basada en el 14.9% histórico (S&P 500 / Nasdaq).</p>
+            <p className="text-slate-600 text-md md:text-lg">Proyección basada en un rendimiento anual estimado del 10%.</p>
           </div>
 
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 md:p-10 shadow-sm">
@@ -294,7 +294,7 @@ function App() {
 
                 <div className="p-6 bg-blue-50 border border-blue-200 rounded-xl text-center shadow-sm relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-1.5 h-full bg-allianz"></div>
-                  <p className="text-xs text-allianz font-extrabold mb-2 uppercase tracking-wider">Estrategia Indexada Allianz (~14.9%)</p>
+                  <p className="text-xs text-allianz font-extrabold mb-2 uppercase tracking-wider">Estrategia Indexada (~10%)</p>
                   <p className="text-3xl md:text-4xl font-extrabold text-slate-900">{formatCurrency(proyeccion)}</p>
                   <p className="text-xs text-slate-500 mt-2">Crecimiento exponencial exento de impuestos</p>
                 </div>

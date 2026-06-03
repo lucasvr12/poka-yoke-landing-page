@@ -38,9 +38,88 @@ function App() {
   const [proyeccion, setProyeccion] = useState(null);
   const [banco, setBanco] = useState(null);
   
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '', horario: 'Jueves 12:00 PM (Sesión en vivo vía Zoom)' });
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', horario: '' });
   const [registered, setRegistered] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [blockedSlots, setBlockedSlots] = useState([]);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(true);
+
+  const API_URL = "https://script.google.com/macros/s/AKfycbytl4-bZ8UCAfRB52bK_aiD5gW8Oguw0tPid2kRg_nwF21eYGLsb15fZEOU1QNmXWxoXQ/exec";
+
+  // Generar horarios de citas disponibles (Lunes a Sábado de 9:00 AM a 6:00 PM) para los siguientes 14 días
+  const generarHorariosDisponibles = () => {
+    const horarios = [];
+    const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+    const now = new Date();
+    
+    // Buscar horarios válidos comenzando desde mañana
+    for (let d = 1; d <= 14; d++) {
+      const fecha = new Date(now.getTime() + d * 24 * 60 * 60 * 1000);
+      const diaSemanaIndex = fecha.getDay();
+      
+      // Saltarse domingos
+      if (diaSemanaIndex === 0) continue;
+      
+      const diaSemanaNombre = diasSemana[diaSemanaIndex];
+      const diaMes = fecha.getDate();
+      const mesNombre = fecha.toLocaleString('es-MX', { month: 'short' });
+      
+      // Citas cada hora de 9:00 AM a 6:00 PM (18:00 hrs)
+      const horasDisponibles = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+      
+      horasDisponibles.forEach((hora) => {
+        const horaFormateada = `${hora}:00 ${hora >= 12 ? 'PM' : 'AM'}`;
+        
+        // Crear objeto de fecha en formato compatible con Google Script ISO
+        const fechaHoraISO = new Date(fecha.getFullYear(), fecha.getMonth(), diaMes, hora, 0, 0);
+        const isoString = new Date(fechaHoraISO.getTime() - (fechaHoraISO.getTimezoneOffset() * 60000)).toISOString().split('.')[0];
+        
+        // Etiqueta legible
+        const label = `${diaSemanaNombre} ${diaMes} de ${mesNombre} a las ${horaFormateada}`;
+        
+        horarios.push({
+          value: isoString, // Formato compatible para crear eventos (YYYY-MM-DDTHH:mm:ss)
+          label: label
+        });
+      });
+    }
+    return horarios;
+  };
+
+  const listaHorarios = React.useMemo(() => generarHorariosDisponibles(), []);
+
+  // Cargar bloqueos de Google Calendar al montar el componente
+  React.useEffect(() => {
+    async function cargarBloqueos() {
+      try {
+        const response = await fetch(API_URL);
+        if (response.ok) {
+          const eventos = await response.json();
+          // Guardar array de fechas ISO bloqueadas
+          const bloqueados = eventos.map(e => e.fecha_hora_bloqueada.split('T')[0] + 'T' + e.fecha_hora_bloqueada.split('T')[1].substring(0, 5));
+          setBlockedSlots(bloqueados);
+        }
+      } catch (error) {
+        console.error("Error al cargar horarios bloqueados:", error);
+      } finally {
+        setIsLoadingSlots(false);
+      }
+    }
+    cargarBloqueos();
+  }, []);
+
+  // Seleccionar automáticamente el primer horario disponible por defecto
+  React.useEffect(() => {
+    if (listaHorarios.length > 0 && !formData.horario) {
+      const primerDisponible = listaHorarios.find(slot => {
+        const slotKey = slot.value.substring(0, 16);
+        return !blockedSlots.includes(slotKey);
+      });
+      if (primerDisponible) {
+        setFormData(prev => ({ ...prev, horario: primerDisponible.value }));
+      }
+    }
+  }, [listaHorarios, blockedSlots, formData.horario]);
 
   const calcularInteresCompuesto = (e) => {
     e.preventDefault();
@@ -62,25 +141,54 @@ function App() {
     }
   };
 
+  const enviarAWhatsApp = (cliente, labelHorario) => {
+    const telefonoAsesor = "528123246698"; // Código de país + número sin espacios
+    const mensaje = `¡Hola! Acabo de agendar mi cita. 
+    
+📋 Mis Datos:
+👤 Nombre: ${cliente.name}
+📧 Correo: ${cliente.email}
+📱 WhatsApp: ${cliente.phone}
+🗓️ Fecha Cita: ${labelHorario}
+
+¡Quedo a la espera del enlace!`;
+    const urlWhatsApp = `https://wa.me/${telefonoAsesor}?text=${encodeURIComponent(mensaje)}`;
+    window.open(urlWhatsApp, "_blank");
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    const url = "https://script.google.com/macros/s/AKfycbwcdkX3mrHMFZKWQ_wzzxCDoDpV232p5P4g0LjaU_KUjIjkD9rrJOJxl1_glZHPyGOTkg/exec";
-    
-    const formParams = new URLSearchParams();
-    formParams.append("name", formData.name);
-    formParams.append("email", formData.email);
-    formParams.append("phone", formData.phone);
-    formParams.append("horario", formData.horario);
+
+    const payload = {
+      nombre: formData.name,
+      correo: formData.email,
+      whatsapp: formData.phone,
+      fecha_cita: formData.horario
+    };
 
     try {
-      await fetch(url, {
+      const response = await fetch(API_URL, {
         method: "POST",
-        mode: "no-cors",
-        body: formParams,
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(payload)
       });
-      setRegistered(true);
+      const resultado = await response.json();
+      
+      if (resultado.status === "success") {
+        setRegistered(true);
+        const slotElegido = listaHorarios.find(s => s.value === formData.horario);
+        enviarAWhatsApp(formData, slotElegido ? slotElegido.label : formData.horario);
+      } else {
+        alert("El horario seleccionado ya no está disponible. Por favor selecciona otro.");
+        // Recargar horarios bloqueados
+        const resReload = await fetch(API_URL);
+        if (resReload.ok) {
+          const eventos = await resReload.json();
+          const bloqueados = eventos.map(ev => ev.fecha_hora_bloqueada.split('T')[0] + 'T' + ev.fecha_hora_bloqueada.split('T')[1].substring(0, 5));
+          setBlockedSlots(bloqueados);
+        }
+      }
     } catch (error) {
       console.error("Error al registrar", error);
       alert("Ocurrió un error. Por favor intenta nuevamente.");
@@ -661,9 +769,20 @@ function App() {
                         className="w-full bg-white border border-slate-300 rounded-md px-4 py-3 text-slate-900 focus:outline-none focus:border-allianz focus:ring-1 focus:ring-allianz transition-colors font-medium"
                         required
                       >
-                        <option value="Jueves 12:00 PM (Sesión en vivo vía Zoom)">Jueves 12:00 PM (Sesión en vivo vía Zoom)</option>
-                        <option value="Viernes 12:00 PM (Sesión en vivo vía Zoom)">Viernes 12:00 PM (Sesión en vivo vía Zoom)</option>
-                        <option value="Sábado 12:00 PM (Sesión en vivo vía Zoom)">Sábado 12:00 PM (Sesión en vivo vía Zoom)</option>
+                        {isLoadingSlots ? (
+                          <option value="">Cargando horarios disponibles...</option>
+                        ) : (
+                          listaHorarios.map((slot) => {
+                            const slotKey = slot.value.substring(0, 16);
+                            const isBlocked = blockedSlots.includes(slotKey);
+                            if (isBlocked) return null;
+                            return (
+                              <option key={slot.value} value={slot.value}>
+                                {slot.label}
+                              </option>
+                            );
+                          })
+                        )}
                       </select>
                     </div>
                   </div>
@@ -742,13 +861,14 @@ function App() {
                 <div className="w-16 h-16 bg-green-50 border border-green-200 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Check className="text-green-600" size={32} />
                 </div>
-                <h3 className="text-2xl font-bold mb-4 text-slate-900">¡Registro Completado con Éxito!</h3>
-                <p className="text-slate-600 text-sm max-w-md mx-auto mb-6">
-                  Hemos enviado la confirmación y los detalles de acceso para tu sesión programada (<strong>{formData.horario}</strong>) a tu correo <strong>{formData.email}</strong>.
-                </p>
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg inline-block">
-                  <p className="text-xs font-bold text-allianz uppercase tracking-wider">Revisa tu bandeja de entrada o carpeta de SPAM</p>
-                </div>
+                 <h3 className="text-2xl font-bold mb-4 text-slate-900">¡Registro Completado con Éxito!</h3>
+                 <p className="text-slate-600 text-sm max-w-md mx-auto mb-6">
+                   Hemos registrado tu sesión programada para: <br />
+                   <strong className="text-allianz">{listaHorarios.find(s => s.value === formData.horario)?.label || formData.horario}</strong>.
+                 </p>
+                 <div className="p-3 bg-green-50 border border-green-200 rounded-lg inline-block mb-4">
+                   <p className="text-xs font-bold text-green-700 uppercase tracking-wider">Redirigiendo a WhatsApp para enviarte el enlace...</p>
+                 </div>
               </motion.div>
             )}
           </motion.div>

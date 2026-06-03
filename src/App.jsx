@@ -142,7 +142,7 @@ function App() {
   };
 
   const enviarAWhatsApp = (cliente, labelHorario) => {
-    const telefonoAsesor = "528123246698"; // Código de país + número sin espacios
+    const telefonoAsesor = "528118790000"; // Código de país + número sin espacios
     const mensaje = `¡Hola! Acabo de agendar mi cita. 
     
 📋 Mis Datos:

@@ -92,8 +92,10 @@ function App() {
         const response = await fetch(API_URL);
         if (response.ok) {
           const eventos = await response.json();
+          // Solo filtrar eventos que tengan en su título la palabra "bloqueo" (sin importar mayúsculas/minúsculas)
+          const eventosBloqueo = eventos.filter(e => e.title && e.title.toLowerCase().includes("bloqueo"));
           // Guardar array de fechas ISO bloqueadas
-          const bloqueados = eventos.map(e => e.fecha_hora_bloqueada.split('T')[0] + 'T' + e.fecha_hora_bloqueada.split('T')[1].substring(0, 5));
+          const bloqueados = eventosBloqueo.map(e => e.fecha_hora_bloqueada.split('T')[0] + 'T' + e.fecha_hora_bloqueada.split('T')[1].substring(0, 5));
           setBlockedSlots(bloqueados);
         }
       } catch (error) {

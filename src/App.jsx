@@ -46,41 +46,38 @@ function App() {
 
   const API_URL = "https://script.google.com/macros/s/AKfycbytl4-bZ8UCAfRB52bK_aiD5gW8Oguw0tPid2kRg_nwF21eYGLsb15fZEOU1QNmXWxoXQ/exec";
 
-  // Generar horarios de citas disponibles (Lunes a Sábado de 9:00 AM a 6:00 PM) para los siguientes 14 días
+  // Generar horarios de citas disponibles (Martes 8:00 PM y Viernes 1:00 PM) para los siguientes 14 días
   const generarHorariosDisponibles = () => {
     const horarios = [];
     const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
     const now = new Date();
     
     // Buscar horarios válidos comenzando desde mañana
-    for (let d = 1; d <= 14; d++) {
+    for (let d = 1; d <= 21; d++) { // Aumentamos a 21 días para asegurar que siempre haya opciones de martes/viernes
       const fecha = new Date(now.getTime() + d * 24 * 60 * 60 * 1000);
       const diaSemanaIndex = fecha.getDay();
       
-      // Saltarse domingos
-      if (diaSemanaIndex === 0) continue;
+      // Únicamente Martes (2) y Viernes (5)
+      if (diaSemanaIndex !== 2 && diaSemanaIndex !== 5) continue;
       
       const diaSemanaNombre = diasSemana[diaSemanaIndex];
       const diaMes = fecha.getDate();
       const mesNombre = fecha.toLocaleString('es-MX', { month: 'short' });
       
-      // Citas cada hora de 9:00 AM a 6:00 PM (18:00 hrs)
-      const horasDisponibles = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+      // Martes a las 8:00 PM (20:00 hrs) y Viernes a las 1:00 PM (13:00 hrs)
+      const hora = diaSemanaIndex === 2 ? 20 : 13;
+      const horaFormateada = diaSemanaIndex === 2 ? '8:00 PM' : '1:00 PM';
       
-      horasDisponibles.forEach((hora) => {
-        const horaFormateada = `${hora}:00 ${hora >= 12 ? 'PM' : 'AM'}`;
-        
-        // Crear objeto de fecha en formato compatible con Google Script ISO
-        const fechaHoraISO = new Date(fecha.getFullYear(), fecha.getMonth(), diaMes, hora, 0, 0);
-        const isoString = new Date(fechaHoraISO.getTime() - (fechaHoraISO.getTimezoneOffset() * 60000)).toISOString().split('.')[0];
-        
-        // Etiqueta legible
-        const label = `${diaSemanaNombre} ${diaMes} de ${mesNombre} a las ${horaFormateada}`;
-        
-        horarios.push({
-          value: isoString, // Formato compatible para crear eventos (YYYY-MM-DDTHH:mm:ss)
-          label: label
-        });
+      // Crear objeto de fecha en formato compatible con Google Script ISO
+      const fechaHoraISO = new Date(fecha.getFullYear(), fecha.getMonth(), diaMes, hora, 0, 0);
+      const isoString = new Date(fechaHoraISO.getTime() - (fechaHoraISO.getTimezoneOffset() * 60000)).toISOString().split('.')[0];
+      
+      // Etiqueta legible
+      const label = `${diaSemanaNombre} ${diaMes} de ${mesNombre} a las ${horaFormateada}`;
+      
+      horarios.push({
+        value: isoString, // Formato compatible para crear eventos (YYYY-MM-DDTHH:mm:ss)
+        label: label
       });
     }
     return horarios;

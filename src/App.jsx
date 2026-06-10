@@ -67,17 +67,20 @@ function App() {
       // Martes a las 8:00 PM (20:00 hrs) y Viernes a las 1:00 PM (13:00 hrs)
       const hora = diaSemanaIndex === 2 ? 20 : 13;
       const horaFormateada = diaSemanaIndex === 2 ? '8:00 PM' : '1:00 PM';
+      const tema = diaSemanaIndex === 2 ? 'Ahorro e inversión' : 'Gastos médicos mayores';
       
       // Crear objeto de fecha en formato compatible con Google Script ISO
       const fechaHoraISO = new Date(fecha.getFullYear(), fecha.getMonth(), diaMes, hora, 0, 0);
       const isoString = new Date(fechaHoraISO.getTime() - (fechaHoraISO.getTimezoneOffset() * 60000)).toISOString().split('.')[0];
       
-      // Etiqueta legible
-      const label = `${diaSemanaNombre} ${diaMes} de ${mesNombre} a las ${horaFormateada}`;
+      // Etiqueta legible con tema incluido
+      const label = `${diaSemanaNombre} ${diaMes} de ${mesNombre} a las ${horaFormateada} — [${tema}]`;
       
       horarios.push({
         value: isoString, // Formato compatible para crear eventos (YYYY-MM-DDTHH:mm:ss)
-        label: label
+        label: label,
+        tema: tema,
+        fechaCompleta: fechaHoraISO
       });
     }
     return horarios;
@@ -176,8 +179,6 @@ function App() {
       
       if (resultado.status === "success") {
         setRegistered(true);
-        const slotElegido = listaHorarios.find(s => s.value === formData.horario);
-        enviarAWhatsApp(formData, slotElegido ? slotElegido.label : formData.horario);
       } else {
         alert("El horario seleccionado ya no está disponible. Por favor selecciona otro.");
         // Recargar horarios bloqueados
@@ -198,6 +199,52 @@ function App() {
 
   const formatCurrency = (val) => {
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(val);
+  };
+
+  // Componente de cuenta regresiva
+  const CountdownTimer = ({ targetDateIso }) => {
+    const calculateTimeLeft = () => {
+      const difference = +new Date(targetDateIso) - +new Date();
+      let timeLeft = {};
+
+      if (difference > 0) {
+        timeLeft = {
+          días: Math.floor(difference / (1000 * 60 * 60 * 24)),
+          horas: Math.floor((difference / (1000 * 60 * 60)) % 24),
+          minutos: Math.floor((difference / 1000 / 60) % 60),
+          segundos: Math.floor((difference / 1000) % 60)
+        };
+      } else {
+        timeLeft = { días: 0, horas: 0, minutos: 0, segundos: 0 };
+      }
+
+      return timeLeft;
+    };
+
+    const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
+
+    React.useEffect(() => {
+      const timer = setTimeout(() => {
+        setTimeLeft(calculateTimeLeft());
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    });
+
+    return (
+      <div className="flex justify-center gap-4 my-6">
+        {Object.keys(timeLeft).map((interval) => (
+          <div key={interval} className="flex flex-col items-center bg-slate-900 border border-slate-800 text-white rounded-lg p-3 w-16 md:w-20 shadow-md">
+            <span className="text-xl md:text-3xl font-extrabold text-allianz">
+              {String(timeLeft[interval]).padStart(2, '0')}
+            </span>
+            <span className="text-[10px] md:text-xs text-slate-400 capitalize font-medium mt-1">
+              {interval}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -855,19 +902,42 @@ function App() {
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="text-center py-10"
+                className="text-center py-6"
               >
                 <div className="w-16 h-16 bg-green-50 border border-green-200 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Check className="text-green-600" size={32} />
                 </div>
-                 <h3 className="text-2xl font-bold mb-4 text-slate-900">¡Registro Completado con Éxito!</h3>
-                 <p className="text-slate-600 text-sm max-w-md mx-auto mb-6">
-                   Hemos registrado tu sesión programada para: <br />
-                   <strong className="text-allianz">{listaHorarios.find(s => s.value === formData.horario)?.label || formData.horario}</strong>.
-                 </p>
-                 <div className="p-3 bg-green-50 border border-green-200 rounded-lg inline-block mb-4">
-                   <p className="text-xs font-bold text-green-700 uppercase tracking-wider">Redirigiendo a WhatsApp para enviarte el enlace...</p>
-                 </div>
+                <h3 className="text-2xl md:text-3xl font-extrabold mb-2 text-slate-900">¡Tu lugar está reservado!</h3>
+                <p className="text-slate-600 text-sm max-w-md mx-auto mb-2">
+                  Hemos agendado tu asistencia al webinar:
+                </p>
+                <div className="bg-slate-100 border border-slate-200 rounded-xl p-4 max-w-lg mx-auto mb-6">
+                  <p className="text-allianz font-bold text-lg md:text-xl">
+                    {listaHorarios.find(s => s.value === formData.horario)?.tema || 'Asesoría Especializada'}
+                  </p>
+                  <p className="text-slate-700 text-sm font-semibold mt-1">
+                    {listaHorarios.find(s => s.value === formData.horario)?.label.split(' — ')[0] || formData.horario}
+                  </p>
+                </div>
+
+                <p className="text-xs uppercase tracking-widest text-slate-400 font-bold mb-2">El webinar inicia en:</p>
+                
+                <CountdownTimer targetDateIso={formData.horario} />
+
+                <div className="mt-8 max-w-md mx-auto">
+                  <button 
+                    onClick={() => {
+                      const slotElegido = listaHorarios.find(s => s.value === formData.horario);
+                      enviarAWhatsApp(formData, slotElegido ? slotElegido.label : formData.horario);
+                    }}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-4 px-6 rounded-md transition-all text-md md:text-lg shadow-md flex justify-center items-center gap-3 uppercase tracking-wider hover:scale-[1.02]"
+                  >
+                    <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+                      <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.963C16.588 1.981 14.116.957 11.492.957c-5.442 0-9.87 4.372-9.875 9.802-.001 1.764.486 3.486 1.411 5.011l-.997 3.642 3.734-.968c1.5.82 3.08 1.248 4.292 1.25zM17.433 14.3c-.3-.15-1.77-.875-2.04-.975-.27-.1-.466-.15-.66.15-.195.3-.755.95-.925 1.15-.17.2-.34.225-.64.075-.3-.15-1.265-.467-2.41-1.485-.89-.79-1.49-1.77-1.665-2.07-.175-.3-.02-.46.13-.61.135-.135.3-.35.45-.525.15-.175.2-.3.3-.5s.05-.375-.025-.525C9.37 9.158 8.16 6.183 7.66 5c-.488-1.182-.98-1.163-1.343-1.18-1.025-.02-1.748-.02-2.316.02-.57.02-1.492.213-2.27.99-.78.78-2.98 2.91-2.98 7.098 0 4.188 3.04 8.22 3.465 8.79.425.57 5.98 9.135 14.49 12.82 2.025.877 3.6 1.4 4.83 1.79 2.03.64 3.88.55 5.34.33 1.625-.24 3.375-1.38 3.845-2.65.47-1.27.47-2.36.33-2.585-.14-.23-.52-.38-.82-.53z" />
+                    </svg>
+                    Confirmar cita por WhatsApp
+                  </button>
+                </div>
               </motion.div>
             )}
           </motion.div>
